@@ -1,0 +1,12 @@
+# Artefatti di build di PlatformIO
+.pio/
+
+# File locali dell'editor
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*~
+
+# File di sistema macOS
+.DS_Store
