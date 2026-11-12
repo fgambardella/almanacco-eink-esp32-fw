@@ -47,7 +47,7 @@ Versioni fissate in [platformio.ini](platformio.ini):
 | GxEPD2 | 1.6.9 | Ultima versione. Contiene il driver `GxEPD2_750_T7` per il pannello V2. |
 | Adafruit GFX Library | 1.13.0 | Ultima versione. Fornisce testo e font usati da GxEPD2. |
 
-Se la 8.0.0 desse problemi, il ripiego è `platformio/espressif32@7.1.3` (core Arduino 2.0.17). Il codice usa solo API presenti in entrambi i core.
+La 8.0.0 è uscita da meno di un mese (19 ottobre 2026), quindi è ancora poco collaudata. Se desse problemi, il ripiego è `platformio/espressif32@7.1.3`, con il core Arduino 2.0.17. Basta cambiare la riga `platform` in `platformio.ini`. Il codice è stato compilato con entrambe le piattaforme, senza errori e senza warning (`-Wall -Wextra`).
 
 **Porta seriale non visibile?** La D32 comunica con il computer tramite un convertitore USB-seriale. Leggi la sigla sul chip vicino al connettore USB: se è un CH340, installa il driver WCH. Le versioni recenti di macOS di solito lo includono già. Prova anche un altro cavo, perché alcuni cavi trasportano solo la ricarica e non i dati.
 
