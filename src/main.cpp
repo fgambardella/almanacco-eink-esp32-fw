@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Flavio Gambardella
 
-// Almanacco firmware v0.1 "Hello world".
+// Almanacco firmware v0.1.1 "Hello world".
 //
 // Prova al banco di scheda, driver board, display e cablaggio: accende la
 // driver board, scrive "Hello, world!", la spegne e mette l'ESP32 in deep
@@ -21,7 +21,7 @@
 
 namespace {
 
-constexpr const char* kFirmwareBanner = "Almanacco firmware v0.1 hello-world";
+constexpr const char* kFirmwareBanner = "Almanacco firmware v0.1.1 hello-world";
 
 // Display bianco/nero 800x480 con controller GDEW075T7 (Waveshare 7.5" V2).
 // Il secondo parametro del template è l'altezza del buffer in RAM: con
@@ -169,12 +169,22 @@ void setup() {
   // 5-6. Disegno con refresh completo, misurandone la durata.
   //      display(false) = refresh completo: trasferisce l'immagine e aspetta
   //      che il pannello abbia finito (il pin BUSY torna alto).
+  //      display(false) termina spegnendo i generatori di tensione del
+  //      pannello: se una qualsiasi di queste attese (accensione, refresh,
+  //      spegnimento) va in timeout, il pin BUSY resta basso. Leggiamo BUSY
+  //      una volta sola, qui, e usiamo lo stesso valore sia per questa riga
+  //      sia per il messaggio di ERRORE più sotto: così non si contraddicono.
   drawHelloWorld();
   const uint32_t refreshStart = millis();
   display.display(false);
   const uint32_t refreshMs = millis() - refreshStart;
-  Serial.printf("Refresh completo: %lu ms\n", static_cast<unsigned long>(refreshMs));
-  bool busyError = displayStillBusy();
+  const bool busyError = displayStillBusy();
+  if (busyError) {
+    Serial.printf("Refresh NON riuscito: timeout BUSY (durata %lu ms)\n",
+                  static_cast<unsigned long>(refreshMs));
+  } else {
+    Serial.printf("Refresh completo: %lu ms\n", static_cast<unsigned long>(refreshMs));
+  }
 
   // 7. Spegnimento del display, eseguito anche in caso di errore: il
   //    pannello non va mai lasciato alimentato senza un refresh in corso.
@@ -182,7 +192,6 @@ void setup() {
   //    controller in sonno profondo; poi end() mette in alta impedenza i pin
   //    di controllo, così non spingono corrente nella driver board spenta.
   display.hibernate();
-  busyError = busyError || displayStillBusy();
   display.end();
   display_power::off();
   Serial.println("PWR: driver board spenta");

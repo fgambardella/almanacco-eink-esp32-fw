@@ -2,12 +2,14 @@
 
 **Almanacco** è un calendario da parete su carta elettronica (e-ink) per la famiglia, basato su ESP32.
 
-Questa è la versione **v0.1 "Hello world"**: serve solo a verificare al banco che scheda, driver board, display e cablaggio funzionino. All'accensione il firmware:
+Questa è la versione **v0.1.1 "Hello world"**: serve solo a verificare al banco che scheda, driver board, display e cablaggio funzionino. All'accensione il firmware:
 
 1. accende la driver board del display (pin PWR);
 2. scrive "Hello, world!" con un bordo su tutto il pannello;
 3. spegne la driver board;
 4. mette l'ESP32 in deep sleep. L'immagine resta visibile anche senza alimentazione.
+
+**Novità della v0.1.1**: corretta la diagnostica seriale. Se il display non risponde (timeout del pin BUSY), il firmware stampa "Refresh NON riuscito: timeout BUSY (durata N ms)" invece di "Refresh completo: N ms". Le due righe usano la stessa condizione del messaggio di ERRORE, quindi non possono più contraddirsi.
 
 WiFi, batteria, orario, calendario e meteo arriveranno nelle versioni successive. La specifica di questa versione è in [docs/specs/almanacco-spec-fw-v0.1-hello-world.md](docs/specs/almanacco-spec-fw-v0.1-hello-world.md).
 
@@ -70,7 +72,7 @@ La prima compilazione scarica il compilatore e il core per ESP32: alcuni GB e di
 5. `pio run -t upload`, poi `pio device monitor`.
 6. Premi RESET sulla D32 e guarda la seriale. Deve mostrare, in ordine:
    ```
-   Almanacco firmware v0.1 hello-world
+   Almanacco firmware v0.1.1 hello-world
    Chip: ESP32-D0WD..., revisione ...
    Flash: 4 MB
    MAC: xx:xx:xx:xx:xx:xx

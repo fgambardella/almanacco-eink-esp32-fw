@@ -4,6 +4,10 @@ Il firmware di Almanacco è scritto **senza consultare il codice di altri proget
 
 Questo file si aggiorna a ogni versione.
 
+## v0.1.1 (13 novembre 2026)
+
+Correzione della diagnostica seriale in caso di timeout del pin BUSY, richiesta da Flavio Gambardella dopo la prova al banco. **Nessuna nuova fonte.** Sono stati riletti solo file di GxEPD2 1.6.9 già elencati per la v0.1: `GxEPD2_BW.h` (`display()`, che termina con `powerOff()`) e `epd/GxEPD2_750_T7.cpp` (`refresh()`, `_PowerOn()`, `_PowerOff()`, `_Update_Full()`).
+
 ## v0.1 "Hello world" (12 novembre 2026)
 
 **Implementazione**: Claude Code (modello Claude Opus 5.5, Anthropic), in una sessione nuova, sotto la supervisione di Flavio Gambardella. Il punto di partenza è la specifica [docs/specs/almanacco-spec-fw-v0.1-hello-world.md](docs/specs/almanacco-spec-fw-v0.1-hello-world.md). Nessun progetto di calendario e-ink è stato cercato, aperto o consultato. Le domande sui dettagli mancanti sono state poste a Flavio.
