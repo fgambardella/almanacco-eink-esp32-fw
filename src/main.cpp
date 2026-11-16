@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Flavio Gambardella
 
-// Almanacco firmware v0.1.1 "Hello world".
+// Almanacco firmware v0.1.2 "Hello world".
 //
 // Prova al banco di scheda, driver board, display e cablaggio: accende la
 // driver board, scrive "Hello, world!", la spegne e mette l'ESP32 in deep
 // sleep. Il ciclo riparte solo con il tasto RESET o una nuova alimentazione.
+//
+// Compilato con ALMANACCO_CLEAR_SCREEN (ambiente lolin_d32_clear) diventa la
+// "modalità pulizia schermo": stessa sequenza, ma il display viene riportato
+// tutto a bianco, da fare prima di lasciare il pannello inutilizzato a lungo.
 
 #include <Arduino.h>
 #include <SPI.h>
@@ -21,7 +25,7 @@
 
 namespace {
 
-constexpr const char* kFirmwareBanner = "Almanacco firmware v0.1.1 hello-world";
+constexpr const char* kFirmwareBanner = "Almanacco firmware v0.1.2 hello-world";
 
 // Display bianco/nero 800x480 con controller GDEW075T7 (Waveshare 7.5" V2).
 // Il secondo parametro del template è l'altezza del buffer in RAM: con
@@ -90,6 +94,18 @@ void initDisplay() {
   display.setRotation(EPD_ROTATION);
 }
 
+#ifdef ALMANACCO_CLEAR_SCREEN
+
+// Modalità pulizia schermo: tutto il pannello bianco, senza bordo né testo.
+// Il refresh completo che segue pilota ogni pixel, quindi cancella anche
+// eventuali tracce lasciate dalle immagini precedenti.
+void drawBlank() {
+  display.setFullWindow();
+  display.fillScreen(GxEPD_WHITE);
+}
+
+#else
+
 // Scrive una riga di testo centrata orizzontalmente, con la linea di base
 // (il "rigo" su cui poggiano le lettere) all'altezza baselineY.
 void drawCentered(const char* text, int16_t baselineY) {
@@ -129,6 +145,8 @@ void drawHelloWorld() {
   drawCentered(pwrLine, h / 2 + 130);
 }
 
+#endif  // ALMANACCO_CLEAR_SCREEN
+
 // Il controller tiene BUSY basso mentre lavora. Se dopo un'operazione è
 // ancora basso, la libreria ha smesso di aspettare per timeout.
 bool displayStillBusy() {
@@ -157,6 +175,9 @@ void setup() {
   delay(SERIAL_WAIT_MS);
   Serial.println();
   printBootInfo();
+#ifdef ALMANACCO_CLEAR_SCREEN
+  Serial.println("Modalita' pulizia schermo: il display verra' riportato a bianco");
+#endif
 
   // 2. Accensione della driver board: senza PWR alto il pannello resta
   //    spento anche con VCC collegato.
@@ -166,7 +187,8 @@ void setup() {
   // 3-4. Inizializzazione e orientamento.
   initDisplay();
 
-  // 5-6. Disegno con refresh completo, misurandone la durata.
+  // 5-6. Disegno con refresh completo, misurandone la durata. In modalità
+  //      pulizia schermo il disegno è solo lo schermo tutto bianco.
   //      display(false) = refresh completo: trasferisce l'immagine e aspetta
   //      che il pannello abbia finito (il pin BUSY torna alto).
   //      display(false) termina spegnendo i generatori di tensione del
@@ -174,7 +196,11 @@ void setup() {
   //      spegnimento) va in timeout, il pin BUSY resta basso. Leggiamo BUSY
   //      una volta sola, qui, e usiamo lo stesso valore sia per questa riga
   //      sia per il messaggio di ERRORE più sotto: così non si contraddicono.
+#ifdef ALMANACCO_CLEAR_SCREEN
+  drawBlank();
+#else
   drawHelloWorld();
+#endif
   const uint32_t refreshStart = millis();
   display.display(false);
   const uint32_t refreshMs = millis() - refreshStart;

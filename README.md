@@ -2,12 +2,14 @@
 
 **Almanacco** è un calendario da parete su carta elettronica (e-ink) per la famiglia, basato su ESP32.
 
-Questa è la versione **v0.1.1 "Hello world"**: serve solo a verificare al banco che scheda, driver board, display e cablaggio funzionino. All'accensione il firmware:
+Questa è la versione **v0.1.2 "Hello world"**: serve solo a verificare al banco che scheda, driver board, display e cablaggio funzionino. All'accensione il firmware:
 
 1. accende la driver board del display (pin PWR);
 2. scrive "Hello, world!" con un bordo su tutto il pannello;
 3. spegne la driver board;
 4. mette l'ESP32 in deep sleep. L'immagine resta visibile anche senza alimentazione.
+
+**Novità della v0.1.2**: la [modalità pulizia schermo](#modalità-pulizia-schermo), che riporta il display tutto a bianco prima di lasciarlo inutilizzato a lungo.
 
 **Novità della v0.1.1**: corretta la diagnostica seriale. Se il display non risponde (timeout del pin BUSY), il firmware stampa "Refresh NON riuscito: timeout BUSY (durata N ms)" invece di "Refresh completo: N ms". Le due righe usano la stessa condizione del messaggio di ERRORE, quindi non possono più contraddirsi.
 
@@ -49,7 +51,7 @@ Versioni fissate in [platformio.ini](platformio.ini):
 | GxEPD2 | 1.6.9 | Ultima versione. Contiene il driver `GxEPD2_750_T7` per il pannello V2. |
 | Adafruit GFX Library | 1.13.0 | Ultima versione. Fornisce testo e font usati da GxEPD2. |
 
-La 8.0.0 è uscita da meno di un mese (19 ottobre 2026), quindi è ancora poco collaudata. Se desse problemi, il ripiego è `platformio/espressif32@7.1.3`, con il core Arduino 2.0.17. Basta cambiare la riga `platform` in `platformio.ini`. Il codice è stato compilato con entrambe le piattaforme, senza errori e senza warning (`-Wall -Wextra`).
+La 8.0.0 è uscita da meno di un mese (19 ottobre 2026), quindi è ancora poco collaudata. Se desse problemi, il ripiego è `platformio/espressif32@7.1.3`, con il core Arduino 2.0.17. Basta cambiare la riga `platform` in `platformio.ini`. Il codice della v0.1.1 è stato compilato con entrambe le piattaforme, senza errori e senza warning (`-Wall -Wextra`). La v0.1.2 è stata compilata, senza errori e senza warning, solo con la 8.0.0.
 
 **Porta seriale non visibile?** La D32 comunica con il computer tramite un convertitore USB-seriale. Leggi la sigla sul chip vicino al connettore USB: se è un CH340, installa il driver WCH. Le versioni recenti di macOS di solito lo includono già. Prova anche un altro cavo, perché alcuni cavi trasportano solo la ricarica e non i dati.
 
@@ -72,7 +74,7 @@ La prima compilazione scarica il compilatore e il core per ESP32: alcuni GB e di
 5. `pio run -t upload`, poi `pio device monitor`.
 6. Premi RESET sulla D32 e guarda la seriale. Deve mostrare, in ordine:
    ```
-   Almanacco firmware v0.1.1 hello-world
+   Almanacco firmware v0.1.2 hello-world
    Chip: ESP32-D0WD..., revisione ...
    Flash: 4 MB
    MAC: xx:xx:xx:xx:xx:xx
@@ -97,6 +99,36 @@ La prima compilazione scarica il compilatore e il core per ESP32: alcuni GB e di
 | Immagine confusa o solo in parte | Driver sbagliato nel codice (pannello V2 = GDEW075T7); DIN/CLK invertiti |
 | Testo capovolto | Cambia `EPD_ROTATION` in `board_pins.h` (1 ↔ 3) |
 | Nulla sul display, nessun errore | VCC non sul pin 3V; GND mancante; PWR rimasto basso |
+
+## Modalità pulizia schermo
+
+Un display e-ink conserva l'ultima immagine anche senza alimentazione. Se il pannello deve restare inutilizzato a lungo (in un cassetto, tra una prova e l'altra), è meglio lasciarlo **tutto bianco**: un'immagine tenuta ferma per mesi può lasciare una traccia leggera.
+
+La modalità pulizia è un ambiente PlatformIO a parte, `lolin_d32_clear`. Fa la stessa sequenza del firmware normale (seriale, accensione della driver board, inizializzazione, refresh completo, spegnimento, deep sleep), ma il refresh disegna uno schermo tutto bianco, senza bordo e senza testo.
+
+```bash
+pio run -e lolin_d32_clear -t upload   # compila e carica la modalità pulizia
+pio device monitor                     # facoltativo: per leggere la seriale
+```
+
+La seriale mostra, dopo le righe sulla scheda:
+
+```
+Modalita' pulizia schermo: il display verra' riportato a bianco
+PWR: driver board accesa
+...
+Refresh completo: ~4000 ms
+PWR: driver board spenta
+Deep sleep: premi RESET per ripetere
+```
+
+Se il display non risponde compare invece "Refresh NON riuscito: timeout BUSY (durata N ms)", seguito dalla stessa lista di controlli del firmware normale.
+
+Quando il display è bianco, **stacca l'USB e riponi il pannello**.
+
+> **Attenzione: non ricaricare subito il firmware normale.** Dopo il caricamento la scheda si riavvia da sola e il firmware normale ridisegnerebbe "Hello, world!", annullando la pulizia. Ricarica `pio run -t upload` (ambiente `lolin_d32`, il predefinito) solo quando riprendi a usare il display.
+
+`pio run` senza `-e` compila solo l'ambiente predefinito `lolin_d32`. Per compilarli entrambi: `pio run -e lolin_d32 -e lolin_d32_clear`.
 
 ## Licenza
 
