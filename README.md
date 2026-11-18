@@ -2,12 +2,14 @@
 
 **Almanacco** è un calendario da parete su carta elettronica (e-ink) per la famiglia, basato su ESP32.
 
-Questa è la versione **v0.1.2 "Hello world"**: serve solo a verificare al banco che scheda, driver board, display e cablaggio funzionino. All'accensione il firmware:
+Questa è la versione **v0.1.3 "Hello world"**: serve solo a verificare al banco che scheda, driver board, display e cablaggio funzionino. All'accensione il firmware:
 
 1. accende la driver board del display (pin PWR);
 2. scrive "Hello, world!" con un bordo su tutto il pannello;
 3. spegne la driver board;
 4. mette l'ESP32 in deep sleep. L'immagine resta visibile anche senza alimentazione.
+
+**Novità della v0.1.3**: niente più falsi "Refresh completo" quando il pin BUSY non è collegato. Se il refresh dura meno di 1000 ms (`EPD_FULL_REFRESH_MIN_MS` in `board_pins.h`), il firmware stampa "Refresh NON verificato: durata N ms, troppo breve (minimo atteso 1000 ms)" e lo tratta come un errore. Un refresh completo reale dura circa 3,3 s.
 
 **Novità della v0.1.2**: la [modalità pulizia schermo](#modalità-pulizia-schermo), che riporta il display tutto a bianco prima di lasciarlo inutilizzato a lungo.
 
@@ -51,7 +53,7 @@ Versioni fissate in [platformio.ini](platformio.ini):
 | GxEPD2 | 1.6.9 | Ultima versione. Contiene il driver `GxEPD2_750_T7` per il pannello V2. |
 | Adafruit GFX Library | 1.13.0 | Ultima versione. Fornisce testo e font usati da GxEPD2. |
 
-La 8.0.0 è uscita da meno di un mese (19 ottobre 2026), quindi è ancora poco collaudata. Se desse problemi, il ripiego è `platformio/espressif32@7.1.3`, con il core Arduino 2.0.17. Basta cambiare la riga `platform` in `platformio.ini`. Il codice della v0.1.1 è stato compilato con entrambe le piattaforme, senza errori e senza warning (`-Wall -Wextra`). La v0.1.2 è stata compilata, senza errori e senza warning, solo con la 8.0.0.
+La 8.0.0 è uscita da meno di un mese (19 ottobre 2026), quindi è ancora poco collaudata. Se desse problemi, il ripiego è `platformio/espressif32@7.1.3`, con il core Arduino 2.0.17. Basta cambiare la riga `platform` in `platformio.ini`. Il codice della v0.1.1 è stato compilato con entrambe le piattaforme, senza errori e senza warning (`-Wall -Wextra`). La v0.1.2 e la v0.1.3 sono state compilate, senza errori e senza warning, solo con la 8.0.0.
 
 **Porta seriale non visibile?** La D32 comunica con il computer tramite un convertitore USB-seriale. Leggi la sigla sul chip vicino al connettore USB: se è un CH340, installa il driver WCH. Le versioni recenti di macOS di solito lo includono già. Prova anche un altro cavo, perché alcuni cavi trasportano solo la ricarica e non i dati.
 
@@ -74,7 +76,7 @@ La prima compilazione scarica il compilatore e il core per ESP32: alcuni GB e di
 5. `pio run -t upload`, poi `pio device monitor`.
 6. Premi RESET sulla D32 e guarda la seriale. Deve mostrare, in ordine:
    ```
-   Almanacco firmware v0.1.2 hello-world
+   Almanacco firmware v0.1.3 hello-world
    Chip: ESP32-D0WD..., revisione ...
    Flash: 4 MB
    MAC: xx:xx:xx:xx:xx:xx
@@ -95,6 +97,7 @@ La prima compilazione scarica il compilatore e il core per ESP32: alcuni GB e di
 | --- | --- |
 | Il computer non vede la porta | Cavo solo di ricarica; driver USB-seriale mancante |
 | Seriale muta | Velocità del monitor diversa da 115200; avvio prima che il monitor sia aperto (premi RESET) |
+| Refresh troppo breve ("Refresh NON verificato") | BUSY probabilmente non collegato: controlla il filo tra BUSY e GPIO 25. Con il pin scollegato il firmware può credere che il pannello abbia già finito |
 | Timeout del display (BUSY) | PWR non collegato o non alto; BUSY non su GPIO 25; cavo piatto non inserito bene. Se i collegamenti sono giusti, prova `EPD_RESET_PULSE_MS = 10` o un `EPD_PWR_SETTLE_MS` più lungo in `board_pins.h` |
 | Immagine confusa o solo in parte | Driver sbagliato nel codice (pannello V2 = GDEW075T7); DIN/CLK invertiti |
 | Testo capovolto | Cambia `EPD_ROTATION` in `board_pins.h` (1 ↔ 3) |
@@ -122,7 +125,7 @@ PWR: driver board spenta
 Deep sleep: premi RESET per ripetere
 ```
 
-Se il display non risponde compare invece "Refresh NON riuscito: timeout BUSY (durata N ms)", seguito dalla stessa lista di controlli del firmware normale.
+Se il display non risponde compare invece "Refresh NON riuscito: timeout BUSY (durata N ms)"; se il refresh è troppo breve, "Refresh NON verificato: durata N ms, troppo breve (minimo atteso 1000 ms)". In entrambi i casi segue la stessa lista di controlli del firmware normale.
 
 Quando il display è bianco, **stacca l'USB e riponi il pannello**.
 

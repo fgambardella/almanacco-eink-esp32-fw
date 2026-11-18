@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Flavio Gambardella
 
-// Almanacco firmware v0.1.2 "Hello world".
+// Almanacco firmware v0.1.3 "Hello world".
 //
 // Prova al banco di scheda, driver board, display e cablaggio: accende la
 // driver board, scrive "Hello, world!", la spegne e mette l'ESP32 in deep
@@ -25,7 +25,7 @@
 
 namespace {
 
-constexpr const char* kFirmwareBanner = "Almanacco firmware v0.1.2 hello-world";
+constexpr const char* kFirmwareBanner = "Almanacco firmware v0.1.3 hello-world";
 
 // Display bianco/nero 800x480 con controller GDEW075T7 (Waveshare 7.5" V2).
 // Il secondo parametro del template è l'altezza del buffer in RAM: con
@@ -153,11 +153,60 @@ bool displayStillBusy() {
   return digitalRead(PIN_EPD_BUSY) == LOW;
 }
 
-void printBusyChecklist() {
-  Serial.println("ERRORE: il display non ha risposto (timeout del pin BUSY).");
-  Serial.println("Controlla, a scheda scollegata:");
-  Serial.printf("  - PWR alto? Il pin PWR della driver board e' su GPIO %d?\n", PIN_EPD_PWR);
-  Serial.printf("  - BUSY collegato a GPIO %d?\n", PIN_EPD_BUSY);
+// I tre esiti possibili di un refresh completo.
+enum class RefreshOutcome {
+  kOk,           // riuscito
+  kBusyTimeout,  // BUSY ancora basso alla fine: la libreria è andata in timeout
+  kTooShort,     // BUSY libero, ma il refresh è durato troppo poco per essere vero
+};
+
+// Unico punto in cui si decide l'esito del refresh. BUSY va letto una volta
+// sola, subito dopo il refresh: da qui in poi tutti i messaggi usano questo
+// esito, così non possono contraddirsi.
+RefreshOutcome classifyRefresh(uint32_t refreshMs) {
+  if (displayStillBusy()) {
+    return RefreshOutcome::kBusyTimeout;
+  }
+  // Con BUSY scollegato il pin flottante può sembrare subito "libero": le
+  // attese finiscono in un attimo e il refresh pare riuscito anche se il
+  // pannello non ha ridisegnato nulla (vedi EPD_FULL_REFRESH_MIN_MS).
+  if (refreshMs < EPD_FULL_REFRESH_MIN_MS) {
+    return RefreshOutcome::kTooShort;
+  }
+  return RefreshOutcome::kOk;
+}
+
+void printRefreshResult(RefreshOutcome outcome, uint32_t refreshMs) {
+  const unsigned long ms = static_cast<unsigned long>(refreshMs);
+  switch (outcome) {
+    case RefreshOutcome::kOk:
+      Serial.printf("Refresh completo: %lu ms\n", ms);
+      break;
+    case RefreshOutcome::kBusyTimeout:
+      Serial.printf("Refresh NON riuscito: timeout BUSY (durata %lu ms)\n", ms);
+      break;
+    case RefreshOutcome::kTooShort:
+      Serial.printf(
+          "Refresh NON verificato: durata %lu ms, troppo breve (minimo atteso %lu ms)\n",
+          ms, static_cast<unsigned long>(EPD_FULL_REFRESH_MIN_MS));
+      break;
+  }
+}
+
+// Lista di controllo stampata in caso di errore. Dice quale dei due casi si
+// è verificato e mette per primo il controllo più probabile.
+void printErrorChecklist(RefreshOutcome outcome) {
+  if (outcome == RefreshOutcome::kTooShort) {
+    Serial.println("ERRORE: refresh troppo breve, il pin BUSY probabilmente non e' collegato.");
+    Serial.println("Controlla, a scheda scollegata:");
+    Serial.printf("  - BUSY collegato a GPIO %d?\n", PIN_EPD_BUSY);
+    Serial.printf("  - PWR alto? Il pin PWR della driver board e' su GPIO %d?\n", PIN_EPD_PWR);
+  } else {
+    Serial.println("ERRORE: il display non ha risposto (timeout del pin BUSY).");
+    Serial.println("Controlla, a scheda scollegata:");
+    Serial.printf("  - PWR alto? Il pin PWR della driver board e' su GPIO %d?\n", PIN_EPD_PWR);
+    Serial.printf("  - BUSY collegato a GPIO %d?\n", PIN_EPD_BUSY);
+  }
   Serial.println("  - VCC sul pin 3V della D32 (non 5V/USB)?");
   Serial.println("  - Cavo a 9 poli inserito bene sulla driver board?");
   Serial.println("  - Cavo piatto del pannello inserito a fondo, blocchetto chiuso?");
@@ -193,9 +242,10 @@ void setup() {
   //      che il pannello abbia finito (il pin BUSY torna alto).
   //      display(false) termina spegnendo i generatori di tensione del
   //      pannello: se una qualsiasi di queste attese (accensione, refresh,
-  //      spegnimento) va in timeout, il pin BUSY resta basso. Leggiamo BUSY
-  //      una volta sola, qui, e usiamo lo stesso valore sia per questa riga
-  //      sia per il messaggio di ERRORE più sotto: così non si contraddicono.
+  //      spegnimento) va in timeout, il pin BUSY resta basso. Un refresh
+  //      troppo breve, invece, indica di solito BUSY scollegato. L'esito si
+  //      decide una volta sola, qui, e vale sia per questa riga sia per il
+  //      messaggio di ERRORE più sotto: così non si contraddicono.
 #ifdef ALMANACCO_CLEAR_SCREEN
   drawBlank();
 #else
@@ -204,13 +254,8 @@ void setup() {
   const uint32_t refreshStart = millis();
   display.display(false);
   const uint32_t refreshMs = millis() - refreshStart;
-  const bool busyError = displayStillBusy();
-  if (busyError) {
-    Serial.printf("Refresh NON riuscito: timeout BUSY (durata %lu ms)\n",
-                  static_cast<unsigned long>(refreshMs));
-  } else {
-    Serial.printf("Refresh completo: %lu ms\n", static_cast<unsigned long>(refreshMs));
-  }
+  const RefreshOutcome outcome = classifyRefresh(refreshMs);
+  printRefreshResult(outcome, refreshMs);
 
   // 7. Spegnimento del display, eseguito anche in caso di errore: il
   //    pannello non va mai lasciato alimentato senza un refresh in corso.
@@ -222,8 +267,8 @@ void setup() {
   display_power::off();
   Serial.println("PWR: driver board spenta");
 
-  if (busyError) {
-    printBusyChecklist();
+  if (outcome != RefreshOutcome::kOk) {
+    printErrorChecklist(outcome);
   }
 
   // 8. Deep sleep senza sorgenti di risveglio.

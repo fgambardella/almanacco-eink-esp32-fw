@@ -48,6 +48,19 @@ constexpr uint16_t EPD_RESET_PULSE_MS = 2;
 // di GxEPD2 e tollera bene i cavetti Dupont lunghi della breadboard.
 constexpr uint32_t EPD_SPI_HZ = 4000000;
 
+// Durata minima plausibile di un refresh completo, in millisecondi.
+// Se BUSY non è collegato, il pin GPIO 25 resta "flottante" (né alto né
+// basso): a volte sembra sempre occupato e GxEPD2 va in timeout, altre volte
+// sembra subito libero e le attese finiscono in pochi microsecondi. In questo
+// secondo caso il refresh sembrerebbe riuscito, ma è durato troppo poco
+// perché il pannello abbia davvero ridisegnato l'immagine.
+// Valori misurati al banco: con il display collegato un refresh completo
+// reale dura circa 3341 ms in totale (_PowerOn ~127 ms, _Update_Full
+// ~2633 ms, _PowerOff ~29 ms); con BUSY scollegato è stato stampato
+// "Refresh completo: 552 ms", un falso positivo. 1000 ms sta ben sotto il
+// valore reale e ben sopra quello falso.
+constexpr uint32_t EPD_FULL_REFRESH_MIN_MS = 1000;
+
 // --- Orientamento ----------------------------------------------------------
 
 // Il pannello è nativamente orizzontale (800x480). Le rotazioni 1 e 3 lo

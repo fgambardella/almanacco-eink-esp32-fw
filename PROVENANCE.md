@@ -4,6 +4,10 @@ Il firmware di Almanacco è scritto **senza consultare il codice di altri proget
 
 Questo file si aggiorna a ogni versione.
 
+## v0.1.3 (18 novembre 2026)
+
+Esito "troppo breve" del refresh completo, per evitare falsi "Refresh completo" con il pin BUSY scollegato (costante `EPD_FULL_REFRESH_MIN_MS`), richiesto da Flavio Gambardella dopo misure al banco. **Nessuna nuova fonte.** La soglia di 1000 ms viene dai tempi misurati da Flavio con la diagnostica seriale di GxEPD2 1.6.9, già elencata per la v0.1. Nessun progetto di calendario e-ink è stato consultato.
+
 ## v0.1.2 (16 novembre 2026)
 
 Modalità pulizia schermo (ambiente PlatformIO `lolin_d32_clear`, flag `ALMANACCO_CLEAR_SCREEN`), richiesta da Flavio Gambardella. **Nessuna nuova fonte.** Sono state usate solo API già elencate per la v0.1 (`setFullWindow()`, `fillScreen()`, `display()` di GxEPD2 1.6.9) e opzioni di `platformio.ini` (`default_envs`, `extends`, `build_flags`) dalla conoscenza generale del modello sulla documentazione di PlatformIO, verificate con una compilazione riuscita di entrambi gli ambienti. Nessun progetto di calendario e-ink è stato consultato.
